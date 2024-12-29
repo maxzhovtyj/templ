@@ -100,3 +100,25 @@ var caseExpressionParser = parse.Func(func(pi *parse.Input) (r CaseExpression, o
 
 	return r, true, nil
 })
+
+var fallthroughExpression parse.Parser[Node] = fallthroughParser{}
+
+type fallthroughParser struct{}
+
+func (fallthroughParser) Parse(pi *parse.Input) (n Node, ok bool, err error) {
+	var r FallthroughExpression
+	start := pi.Index()
+
+	// Check the prefix first.
+	if !peekPrefix(pi, "fallthrough") {
+		pi.Seek(start)
+		return
+	}
+
+	// fallthrough
+	if r.Expression, err = parseGo("fallthrough", pi, goexpression.Fallthrough); err != nil {
+		return r, false, err
+	}
+
+	return r, true, nil
+}

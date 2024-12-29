@@ -1109,6 +1109,20 @@ type CaseExpression struct {
 	Children   []Node
 }
 
+type FallthroughExpression struct {
+	Expression Expression
+}
+
+func (fe FallthroughExpression) IsNode() bool { return true }
+
+func (fe FallthroughExpression) Write(w io.Writer, indent int) error {
+	if err := writeIndent(w, indent, "fallthrough"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 //	for i, v := range p.Addresses {
 //	  {! Address(v) }
 //	}

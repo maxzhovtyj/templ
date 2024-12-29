@@ -65,6 +65,20 @@ func If(content string) (start, end int, err error) {
 	})
 }
 
+func Fallthrough(content string) (start, end int, err error) {
+	if !strings.HasPrefix(content, "fallthrough") {
+		return 0, 0, ErrExpectedNodeNotFound
+	}
+	return extract(content, func(body []ast.Stmt) (start, end int, err error) {
+		stmt, ok := body[0].(*ast.BranchStmt)
+		if !ok {
+			return 0, 0, ErrExpectedNodeNotFound
+		}
+		end = int(stmt.End())
+		return end, end, nil
+	})
+}
+
 func For(content string) (start, end int, err error) {
 	if !strings.HasPrefix(content, "for") {
 		return 0, 0, ErrExpectedNodeNotFound

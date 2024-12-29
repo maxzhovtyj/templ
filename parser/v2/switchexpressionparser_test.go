@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/a-h/parse"
@@ -298,6 +299,130 @@ default:
 				},
 			},
 		},
+		{
+			name: "switch: two cases & fallthrough",
+			input: `switch "a" {
+	case "a":
+		{ "A" }
+		fallthrough
+	case "b":
+		{ "B" }
+}`,
+			expected: SwitchExpression{
+				Expression: Expression{
+					Value: `"a"`,
+					Range: Range{
+						From: Position{
+							Index: 7,
+							Line:  0,
+							Col:   7,
+						},
+						To: Position{
+							Index: 10,
+							Line:  0,
+							Col:   10,
+						},
+					},
+				},
+				Cases: []CaseExpression{
+					{
+						Expression: Expression{
+							Value: "case \"a\":",
+							Range: Range{
+								From: Position{
+									Index: 14,
+									Line:  1,
+									Col:   1,
+								},
+								To: Position{
+									Index: 23,
+									Line:  1,
+									Col:   10,
+								},
+							},
+						},
+						Children: []Node{
+							Whitespace{
+								Value: "\t\t",
+							},
+							StringExpression{
+								Expression: Expression{
+									Value: `"A"`,
+									Range: Range{
+										From: Position{
+											Index: 28,
+											Line:  2,
+											Col:   4,
+										},
+										To: Position{
+											Index: 31,
+											Line:  2,
+											Col:   7,
+										},
+									},
+								},
+								TrailingSpace: SpaceVertical,
+							},
+							FallthroughExpression{Expression: Expression{
+								Value: "",
+								Range: Range{
+									From: Position{
+										Index: 0,
+										Line:  3,
+										Col:   0,
+									},
+									To: Position{
+										Index: 0,
+										Line:  3,
+										Col:   0,
+									},
+								},
+							}},
+						},
+					},
+					{
+						Expression: Expression{
+							Value: "case \"b\":",
+							Range: Range{
+								From: Position{
+									Index: 49,
+									Line:  4,
+									Col:   1,
+								},
+								To: Position{
+									Index: 58,
+									Line:  4,
+									Col:   10,
+								},
+							},
+						},
+						Children: []Node{
+							Whitespace{
+								Value: "\t\t",
+							},
+							StringExpression{
+								Expression: Expression{
+									Value: `"B"`,
+									Range: Range{
+										From: Position{
+											Index: 63,
+											Line:  5,
+											Col:   4,
+										},
+										To: Position{
+											Index: 66,
+											Line:  5,
+											Col:   7,
+										},
+									},
+								},
+								TrailingSpace: SpaceVertical,
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -316,6 +441,35 @@ default:
 			}
 		})
 	}
+}
+
+func TestFallthroughParser(t *testing.T) {
+	i := `switch 0 {
+	case 0:
+		{ "A" }
+		fallthrough
+	case 1:
+		{ "B" }
+}`
+
+	input := parse.NewInput(i)
+	actual, ok, err := switchExpression.Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !ok {
+		t.Fatalf("unexpected failure for input %q", i)
+	}
+
+	var b bytes.Buffer
+
+	err = actual.Write(&b, 0)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	t.Log(b.String())
 }
 
 func TestIncompleteSwitch(t *testing.T) {

@@ -80,6 +80,7 @@ var templateNodeParsers = []parse.Parser[Node]{
 	goCode,                 // {{ myval := x.myval }}
 	stringExpression,       // { "abc" }
 	whitespaceExpression,   // { " " }
+	fallthroughExpression,  // fallthrough
 	textParser,             // anything &amp; everything accepted...
 }
 

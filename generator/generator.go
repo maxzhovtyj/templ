@@ -560,6 +560,8 @@ func (g *generator) writeNode(indentLevel int, current parser.Node, next parser.
 	case parser.GoComment:
 		// Do not render Go comments in the output HTML.
 		return
+	case parser.FallthroughExpression:
+		err = g.writeFallthroughExpression(indentLevel)
 	default:
 		return fmt.Errorf("unhandled type: %v", reflect.TypeOf(n))
 	}
@@ -717,6 +719,14 @@ func (g *generator) writeSwitchExpression(indentLevel int, n parser.SwitchExpres
 	}
 	// }
 	if _, err = g.w.WriteIndent(indentLevel, `}`+"\n"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (g *generator) writeFallthroughExpression(indentLevel int) (err error) {
+	_, err = g.w.WriteIndent(indentLevel, "fallthrough\n")
+	if err != nil {
 		return err
 	}
 	return nil
