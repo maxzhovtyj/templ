@@ -114,9 +114,14 @@ outer:
 		// Attempt to parse a node.
 		// Loop through the parsers and try to parse a node.
 		var matched bool
-		for _, p := range templateNodeParsers {
+		for _, np := range templateNodeParsers {
+			// check whether fallthrough within switch case
+			if _, ok = np.(fallthroughParser); ok && p.untilName != caseExpressionUntilName {
+				continue
+			}
+
 			var node Node
-			node, matched, err = p.Parse(pi)
+			node, matched, err = np.Parse(pi)
 			if err != nil {
 				return Nodes{}, false, err
 			}
