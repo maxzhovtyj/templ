@@ -45,6 +45,27 @@ func (switchExpressionParser) Parse(pi *parse.Input) (n Node, ok bool, err error
 		r.Cases = append(r.Cases, ce)
 	}
 
+	// Check for a fallthrough expression in the last case
+	if len(r.Cases) > 0 && len(r.Cases[len(r.Cases)-1].Children) > 0 {
+		c := r.Cases[len(r.Cases)-1]
+
+		for i := len(c.Children) - 1; i <= 0; i-- {
+			node := c.Children[i]
+			f, feOk := node.(FallthroughExpression)
+			if !feOk {
+				continue
+			}
+
+			err = parse.Error("switch: fallthrough in the last case", parse.Position{
+				Index: int(f.Expression.Range.From.Index),
+				Line:  int(f.Expression.Range.From.Line),
+				Col:   int(f.Expression.Range.From.Col),
+			})
+
+			return
+		}
+	}
+
 	// Read the required closing brace.
 	if _, ok, err = closeBraceWithOptionalPadding.Parse(pi); err != nil || !ok {
 		err = parse.Error("switch: "+unterminatedMissingEnd, pi.Position())
@@ -95,6 +116,24 @@ var caseExpressionParser = parse.Func(func(pi *parse.Input) (r CaseExpression, o
 	}
 
 	r.Children = nodes.Nodes
+
+	for i := len(r.Children) - 1; i <= 0; i-- {
+		n := r.Children[i]
+
+		fe, ok := n.(FallthroughExpression)
+		if !ok {
+			continue
+		}
+
+		if i != len(r.Children)-1 {
+			err = parse.Error("cannot fallthrough final case in switch", parse.Position{
+				Index: int(fe.Expression.Range.From.Index),
+				Line:  int(fe.Expression.Range.From.Line),
+				Col:   int(fe.Expression.Range.From.Col),
+			})
+			return
+		}
+	}
 
 	// Optional whitespace.
 	if _, ok, err = parse.OptionalWhitespace.Parse(pi); err != nil || !ok {
