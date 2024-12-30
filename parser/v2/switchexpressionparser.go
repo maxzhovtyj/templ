@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"github.com/a-h/parse"
 	"github.com/a-h/templ/parser/v2/goexpression"
 )
@@ -8,6 +9,11 @@ import (
 var switchExpression parse.Parser[Node] = switchExpressionParser{}
 
 type switchExpressionParser struct{}
+
+var (
+	fallthroughFinalCase  = errors.New("cannot fallthrough final case in switch")
+	fallthroughOutOfPlace = errors.New("fallthrough statement out of place")
+)
 
 func (switchExpressionParser) Parse(pi *parse.Input) (n Node, ok bool, err error) {
 	var r SwitchExpression
@@ -49,14 +55,14 @@ func (switchExpressionParser) Parse(pi *parse.Input) (n Node, ok bool, err error
 	if len(r.Cases) > 0 && len(r.Cases[len(r.Cases)-1].Children) > 0 {
 		c := r.Cases[len(r.Cases)-1]
 
-		for i := len(c.Children) - 1; i <= 0; i-- {
+		for i := len(c.Children) - 1; i >= 0; i-- {
 			node := c.Children[i]
 			f, feOk := node.(FallthroughExpression)
 			if !feOk {
 				continue
 			}
 
-			err = parse.Error("switch: fallthrough in the last case", parse.Position{
+			err = parse.Error(fallthroughFinalCase.Error(), parse.Position{
 				Index: int(f.Expression.Range.From.Index),
 				Line:  int(f.Expression.Range.From.Line),
 				Col:   int(f.Expression.Range.From.Col),
@@ -117,20 +123,21 @@ var caseExpressionParser = parse.Func(func(pi *parse.Input) (r CaseExpression, o
 
 	r.Children = nodes.Nodes
 
-	for i := len(r.Children) - 1; i <= 0; i-- {
+	for i := len(r.Children) - 1; i >= 0; i-- {
 		n := r.Children[i]
 
-		fe, ok := n.(FallthroughExpression)
-		if !ok {
+		fe, feOk := n.(FallthroughExpression)
+		if !feOk {
 			continue
 		}
 
 		if i != len(r.Children)-1 {
-			err = parse.Error("cannot fallthrough final case in switch", parse.Position{
+			err = parse.Error(fallthroughOutOfPlace.Error(), parse.Position{
 				Index: int(fe.Expression.Range.From.Index),
 				Line:  int(fe.Expression.Range.From.Line),
 				Col:   int(fe.Expression.Range.From.Col),
 			})
+
 			return
 		}
 	}

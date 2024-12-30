@@ -1,7 +1,8 @@
 package parser
 
 import (
-	"bytes"
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/a-h/parse"
@@ -195,6 +196,7 @@ default:
 			name: "switch: two cases",
 			input: `switch "stringy" {
 	case "a":
+		fallthrough
 		{ "A" }
 	case "b":
 		{ "B" }
@@ -443,33 +445,58 @@ default:
 	}
 }
 
-func TestFallthroughParser(t *testing.T) {
-	i := `switch 0 {
+func TestFallthroughExpressionParser(t *testing.T) {
+	testTable := []struct {
+		name  string
+		err   error
+		input string
+	}{
+		{
+			name: "fallthrough out of place",
+			err:  fallthroughOutOfPlace,
+			input: `switch 0 {
+	case 0:
+		fallthrough
+		{ "A" }
+}`,
+		},
+		{
+			name: "fallthrough final case",
+			err:  fallthroughFinalCase,
+			input: `switch 0 {
+	case 0:
+		{ "A" }
+		fallthrough
+}`,
+		},
+		{
+			name: "ok",
+			err:  nil,
+			input: `switch 0 {
 	case 0:
 		{ "A" }
 		fallthrough
 	case 1:
 		{ "B" }
-}`
-
-	input := parse.NewInput(i)
-	actual, ok, err := switchExpression.Parse(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+}`,
+		},
 	}
 
-	if !ok {
-		t.Fatalf("unexpected failure for input %q", i)
+	for _, testCase := range testTable {
+		t.Run(testCase.name, func(t *testing.T) {
+			input := parse.NewInput(testCase.input)
+
+			_, _, err := switchExpression.Parse(input)
+
+			if errors.Is(err, testCase.err) {
+				return
+			}
+
+			if !strings.Contains(err.Error(), testCase.err.Error()) {
+				t.Errorf("expected error %q, got %q", testCase.err, err)
+			}
+		})
 	}
-
-	var b bytes.Buffer
-
-	err = actual.Write(&b, 0)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-
-	t.Log(b.String())
 }
 
 func TestIncompleteSwitch(t *testing.T) {
